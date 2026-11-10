@@ -35,6 +35,15 @@ const NAV_ITEMS = [
   { href: "/admin", label: "Administration", icon: ShieldCheck },
 ];
 
+const DEMO_COMPANY_SLUGS = new Set(["tesla-2012-sim", "meridian-mobility"]);
+
+function isSeededDemoCompany(c: {
+  slug: string;
+  isHistoricalDemo: boolean;
+}): boolean {
+  return c.isHistoricalDemo || DEMO_COMPANY_SLUGS.has(c.slug);
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data, refreshSession, switchWorkspaceOrUser } = useSession();
@@ -138,11 +147,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors ${
-                  active
+                className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors ${active
                     ? "bg-[#315B7D]/10 text-[#315B7D] font-medium border border-[#315B7D]/20"
                     : "text-[#667085] hover:bg-[#F7F8FA] hover:text-[#202938] border border-transparent"
-                }`}
+                  }`}
               >
                 <Icon className="h-4 w-4 shrink-0" />
                 <span>{item.label}</span>
@@ -163,11 +171,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-between">
             <span>PayPal Mode</span>
             <span
-              className={`font-medium ${
-                data?.integrations.paypalConfigured
+              className={`font-medium ${data?.integrations.paypalConfigured
                   ? "text-[#16A34A]"
                   : "text-[#D69E36]"
-              }`}
+                }`}
             >
               {data?.integrations.paypalConfigured
                 ? "Sandbox Live"
@@ -209,11 +216,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileNavOpen(false)}
-                    className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] ${
-                      active
+                    className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] ${active
                         ? "bg-[#315B7D]/10 text-[#315B7D] font-medium"
                         : "text-[#667085] hover:bg-[#F7F8FA]"
-                    }`}
+                      }`}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
                     <span>{item.label}</span>
@@ -246,11 +252,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onChange={(e) =>
                   switchWorkspaceOrUser({ companyId: e.target.value })
                 }
-                className="h-8 max-w-[220px] rounded border border-[#E5E7EB] bg-[#F7F8FA] px-2.5 text-xs font-medium text-[#202938] focus:border-[#315B7D] focus:outline-none"
+                className="h-8 max-w-[260px] rounded border border-[#E5E7EB] bg-[#F7F8FA] px-2.5 text-xs font-medium text-[#202938] focus:border-[#315B7D] focus:outline-none"
               >
                 {data?.companies.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {isSeededDemoCompany(c) ? `[DEMO] ${c.name}` : c.name}
                   </option>
                 ))}
               </select>
@@ -402,6 +408,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="border-b border-[#E5E7EB] bg-[#FFFFFF] px-4 lg:px-6 py-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#667085]">
             <div className="flex items-center gap-2">
               <Info className="h-3.5 w-3.5 text-[#3B82F6] shrink-0" />
+              {isSeededDemoCompany(activeCompany) && (
+                <span className="rounded bg-[#D69E36]/15 px-1.5 py-0.5 text-[10px] font-medium text-[#A16207]">
+                  DEMO WORKSPACE
+                </span>
+              )}
               <span>
                 <strong className="font-medium text-[#202938]">
                   {activeCompany.name}
