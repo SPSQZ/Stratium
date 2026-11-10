@@ -1,0 +1,472 @@
+// Stratium Prisma Schema
+// Uses SQLite for zero-friction local hackathon execution.
+// To migrate to PostgreSQL, change provider = "postgresql" and DATABASE_URL in .env.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id                    String                  @id @default(cuid())
+  slug                  String                  @unique
+  name                  String
+  industry              String
+  businessModel         String
+  description           String
+  operatingRegions      String
+  companySize           String
+  strategicObjectives   String
+  productsAndServices   String
+  customerSegments      String
+  competitorsSummary    String
+  historicalCutoffDate  String?
+  isHistoricalDemo      Boolean                 @default(false)
+  syntheticDataNotice   String?
+  currency              String                  @default("USD")
+  recordedCashBalance   Float                   @default(0)
+  recordedBalanceSource String                  @default("Seeded Ledger Opening Balance")
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  departments           Department[]
+  users                 User[]
+  profileSections       CompanyProfileSection[]
+  documents             CompanyDocument[]
+  documentChunks        DocumentChunk[]
+  budgets               Budget[]
+  invoices              Invoice[]
+  paymentRequests       PaymentRequest[]
+  approvalPolicies      ApprovalPolicy[]
+  transactions          Transaction[]
+  calendarEvents        CalendarEvent[]
+  meetings              Meeting[]
+  boardroomMessages     BoardroomMessage[]
+  decisions             StrategicDecision[]
+  scenarios             StrategicScenario[]
+  auditLogs             AuditLog[]
+}
+
+model Department {
+  id                 String                  @id @default(cuid())
+  companyId          String
+  name               String
+  code               String
+  parentDepartmentId String?
+  headTitle          String
+  description        String
+  confidentialScope  Boolean                 @default(false)
+  createdAt          DateTime                @default(now())
+
+  company            Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  parentDepartment   Department?             @relation("DepartmentHierarchy", fields: [parentDepartmentId], references: [id])
+  childDepartments   Department[]            @relation("DepartmentHierarchy")
+  users              User[]
+  profileSections    CompanyProfileSection[]
+  documents          CompanyDocument[]
+  documentChunks     DocumentChunk[]
+  budgets            Budget[]
+  invoices           Invoice[]
+  paymentRequests    PaymentRequest[]
+  transactions       Transaction[]
+  calendarEvents     CalendarEvent[]
+  decisions          StrategicDecision[]
+
+  @@unique([companyId, code])
+}
+
+model User {
+  id                   String              @id @default(cuid())
+  companyId            String
+  departmentId         String?
+  name                 String
+  email                String
+  title                String
+  role                 String              // BOARD_MEMBER, CEO, CFO, CTO, DEPARTMENT_HEAD, FINANCE_MANAGER, HR_MANAGER, DEPARTMENT_MANAGER, EMPLOYEE, AUDITOR, ADMINISTRATOR, PAYMENT_EXECUTOR
+  employmentType       String              @default("FULL_TIME") // FULL_TIME, PART_TIME, CONTRACTOR
+  monthlySalary        Float               @default(0)
+  payCycle             String              @default("MONTHLY") // MONTHLY, BIWEEKLY, MILESTONE
+  payDayOfMonth        Int                 @default(28)
+  payoutEmail          String              @default("")
+  bankAccountRef       String              @default("")
+  nextPayDate          DateTime?
+  payrollStatus        String              @default("ACTIVE") // ACTIVE, ON_HOLD, INACTIVE
+  isDemoAccount        Boolean             @default(true)
+  createdAt            DateTime            @default(now())
+
+  company              Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department           Department?         @relation(fields: [departmentId], references: [id])
+  uploadedDocuments    CompanyDocument[]
+  requestedPayments    PaymentRequest[]
+  approvalActions      ApprovalAction[]
+  boardroomMessages    BoardroomMessage[]
+  responsibleDecisions StrategicDecision[]
+
+  @@unique([companyId, email])
+}
+
+model CompanyProfileSection {
+  id                 String      @id @default(cuid())
+  companyId          String
+  departmentId       String?
+  category           String      // STRATEGY, PRODUCTS_TECH, CUSTOMERS, COMPETITORS, FINANCIALS, OPERATIONS, WORKFORCE, RISKS, HISTORICAL_DECISIONS
+  title              String
+  summary            String
+  content            String
+  sourceType         String      // PUBLIC_HISTORICAL, SYNTHETIC_DEMO, USER_UPLOADED, MANUAL_ENTRY
+  sourceCitation     String
+  verificationStatus String      // VERIFIED_PUBLIC, SYNTHETIC_RECORD, MANAGEMENT_ASSUMPTION, AI_HYPOTHESIS
+  effectiveDate      String?
+  accessLevel        String      @default("COMPANY_WIDE") // COMPANY_WIDE, LEADERSHIP_ONLY, FINANCE_AND_EXEC, HR_RESTRICTED, DEPARTMENT_ONLY
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  company            Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department         Department? @relation(fields: [departmentId], references: [id])
+}
+
+model CompanyDocument {
+  id                 String          @id @default(cuid())
+  companyId          String
+  departmentId       String?
+  uploadedById       String?
+  fileName           String
+  fileType           String          // PDF, CSV, XLSX, TXT, SEED
+  fileSizeBytes      Int             @default(0)
+  sourceLabel        String
+  sourceType         String          // PUBLIC_HISTORICAL, SYNTHETIC_DEMO, USER_UPLOADED
+  verificationStatus String          // VERIFIED_PUBLIC, SYNTHETIC_RECORD, USER_PROVIDED_UNVERIFIED
+  extractionStatus   String          // COMPLETED, PARTIAL, FAILED, PENDING
+  extractedSummary   String
+  associatedInfo     String          // JSON or descriptive tags
+  accessLevel        String          @default("COMPANY_WIDE")
+  createdAt          DateTime        @default(now())
+
+  company            Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department         Department?     @relation(fields: [departmentId], references: [id])
+  uploadedBy         User?           @relation(fields: [uploadedById], references: [id])
+  chunks             DocumentChunk[]
+}
+
+model DocumentChunk {
+  id           String          @id @default(cuid())
+  documentId   String
+  companyId    String
+  departmentId String?
+  category     String
+  chunkIndex   Int
+  content      String
+  metadataJson String          @default("{}")
+  accessLevel  String          @default("COMPANY_WIDE")
+  createdAt    DateTime        @default(now())
+
+  document     CompanyDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  company      Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department   Department?     @relation(fields: [departmentId], references: [id])
+}
+
+model Budget {
+  id              String             @id @default(cuid())
+  companyId       String
+  departmentId    String?
+  decisionId      String?
+  name            String
+  category        String             // DEPARTMENT, PROJECT, INFRASTRUCTURE, OPERATING
+  fiscalPeriod    String
+  allocatedAmount Float
+  status          String             @default("APPROVED") // PROPOSED, APPROVED, ACTIVE, CLOSED
+  notes           String             @default("")
+  isSynthetic     Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  company         Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department      Department?        @relation(fields: [departmentId], references: [id])
+  decision        StrategicDecision? @relation(fields: [decisionId], references: [id])
+  invoices        Invoice[]
+  paymentRequests PaymentRequest[]
+  transactions    Transaction[]
+  calendarEvents  CalendarEvent[]
+}
+
+model Invoice {
+  id                String           @id @default(cuid())
+  companyId         String
+  departmentId      String?
+  budgetId          String?
+  direction         String           // RECEIVABLE, PAYABLE
+  invoiceNumber     String
+  counterpartyName  String
+  counterpartyEmail String           @default("")
+  description       String
+  amount            Float
+  paidAmount        Float            @default(0)
+  refundedAmount    Float            @default(0)
+  currency          String           @default("USD")
+  issueDate         DateTime
+  dueDate           DateTime
+  status            String           // DRAFT, ISSUED, PARTIALLY_PAID, PAID, OVERDUE, CANCELLED, REFUNDED
+  paypalOrderId     String?
+  isSynthetic       Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  company           Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department        Department?      @relation(fields: [departmentId], references: [id])
+  budget            Budget?          @relation(fields: [budgetId], references: [id])
+  paymentRequests   PaymentRequest[]
+  transactions      Transaction[]
+  calendarEvents    CalendarEvent[]
+
+  @@unique([companyId, invoiceNumber])
+}
+
+model PaymentRequest {
+  id                      String           @id @default(cuid())
+  companyId               String
+  departmentId            String?
+  budgetId                String?
+  invoiceId               String?
+  requestedById           String
+  direction               String           // INCOMING, OUTGOING, INTERNAL_ALLOCATION
+  title                   String
+  counterpartyName        String
+  counterpartyEmail       String           @default("")
+  amount                  Float
+  currency                String           @default("USD")
+  category                String
+  purpose                 String
+  status                  String           // DRAFT, PENDING_VALIDATION, PENDING_DEPT_APPROVAL, PENDING_FINANCE_APPROVAL, PENDING_EXEC_APPROVAL, APPROVED_READY_FOR_EXECUTION, PROCESSING, PAID, FAILED, REJECTED, CANCELLED
+  aiValidationSummary     String           @default("")
+  aiRiskFlagsJson         String           @default("[]")
+  requiresDeptApproval    Boolean          @default(true)
+  requiresFinanceApproval Boolean          @default(true)
+  requiresExecApproval    Boolean          @default(false)
+  dueDate                 DateTime?
+  executedAt              DateTime?
+  provider                String           @default("PAYPAL_SANDBOX") // PAYPAL_SANDBOX, PAYPAL_SIMULATED, INTERNAL_LEDGER
+  providerReference       String?
+  isSimulated             Boolean          @default(false)
+  isSynthetic             Boolean          @default(true)
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+
+  company                 Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department              Department?      @relation(fields: [departmentId], references: [id])
+  budget                  Budget?          @relation(fields: [budgetId], references: [id])
+  invoice                 Invoice?         @relation(fields: [invoiceId], references: [id])
+  requestedBy             User             @relation(fields: [requestedById], references: [id])
+  approvalActions         ApprovalAction[]
+  transactions            Transaction[]
+  calendarEvents          CalendarEvent[]
+}
+
+model ApprovalPolicy {
+  id                       String   @id @default(cuid())
+  companyId                String
+  name                     String
+  minAmount                Float    @default(0)
+  maxAmount                Float?
+  requiresDeptManager      Boolean  @default(true)
+  requiresFinanceManager   Boolean  @default(true)
+  requiresExecutiveOrBoard Boolean  @default(false)
+  isActive                 Boolean  @default(true)
+  createdAt                DateTime @default(now())
+
+  company                  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model ApprovalAction {
+  id               String         @id @default(cuid())
+  paymentRequestId String
+  actorUserId      String
+  actorName        String
+  actorRole        String
+  action           String         // SUBMITTED, AI_VALIDATED, DEPT_APPROVED, FINANCE_APPROVED, EXEC_APPROVED, REJECTED, EXECUTED, FAILED, CANCELLED, REFUNDED
+  comment          String         @default("")
+  createdAt        DateTime       @default(now())
+
+  paymentRequest   PaymentRequest @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
+  actorUser        User           @relation(fields: [actorUserId], references: [id])
+}
+
+model Transaction {
+  id               String          @id @default(cuid())
+  companyId        String
+  departmentId     String?
+  budgetId         String?
+  invoiceId        String?
+  paymentRequestId String?
+  direction        String          // INCOMING, OUTGOING
+  amount           Float
+  currency         String          @default("USD")
+  category         String
+  description      String
+  counterparty     String
+  occurredAt       DateTime        @default(now())
+  status           String          // COMPLETED, PENDING, FAILED, REFUNDED
+  source           String          // PAYPAL_SANDBOX, PAYPAL_SIMULATED, BANK_FEED_DEMO, MANUAL_RECORD
+  externalRef      String?
+  isSimulated      Boolean         @default(false)
+  isSynthetic      Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+
+  company          Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department       Department?     @relation(fields: [departmentId], references: [id])
+  budget           Budget?         @relation(fields: [budgetId], references: [id])
+  invoice          Invoice?        @relation(fields: [invoiceId], references: [id])
+  paymentRequest   PaymentRequest? @relation(fields: [paymentRequestId], references: [id])
+}
+
+model CalendarEvent {
+  id               String             @id @default(cuid())
+  companyId        String
+  departmentId     String?
+  budgetId         String?
+  invoiceId        String?
+  paymentRequestId String?
+  decisionId       String?
+  title            String
+  description      String
+  eventDate        DateTime
+  amount           Float
+  direction        String             // INCOMING, OUTGOING, ALLOCATION
+  category         String
+  status           String             // FORECASTED, PROPOSED, APPROVED, CONTRACTED, DUE, PAID, FAILED, CANCELLED
+  sourceLabel      String
+  isSynthetic      Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  company          Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department       Department?        @relation(fields: [departmentId], references: [id])
+  budget           Budget?            @relation(fields: [budgetId], references: [id])
+  invoice          Invoice?           @relation(fields: [invoiceId], references: [id])
+  paymentRequest   PaymentRequest?    @relation(fields: [paymentRequestId], references: [id])
+  decision         StrategicDecision? @relation(fields: [decisionId], references: [id])
+}
+
+model Meeting {
+  id               String              @id @default(cuid())
+  companyId        String
+  title            String
+  meetingType      String
+  scheduledAt      DateTime
+  status           String              @default("SCHEDULED") // SCHEDULED, IN_PROGRESS, COMPLETED
+  agenda           String
+  participantsJson String              @default("[]")
+  contextSummary   String
+  transcript       String              @default("")
+  aiSummary        String              @default("")
+  actionItemsJson  String              @default("[]")
+  isSynthetic      Boolean             @default(true)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  company          Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  messages         BoardroomMessage[]
+  decisions        StrategicDecision[]
+}
+
+model BoardroomMessage {
+  id                     String   @id @default(cuid())
+  companyId              String
+  meetingId              String
+  authorUserId           String?
+  speakerName            String
+  speakerRole            String
+  messageType            String   // PARTICIPANT, TRANSCRIPT_CHUNK, AI_ANALYSIS, SYSTEM
+  content                String
+  structuredResponseJson String?
+  createdAt              DateTime @default(now())
+
+  company                Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  meeting                Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  authorUser             User?    @relation(fields: [authorUserId], references: [id])
+}
+
+model StrategicDecision {
+  id                    String          @id @default(cuid())
+  companyId             String
+  meetingId             String?
+  departmentId          String?
+  responsibleUserId     String?
+  title                 String
+  description           String
+  objective             String
+  alternativesConsidered String
+  selectedOption        String
+  rationale             String
+  assumptions           String
+  risks                 String
+  financialImplications String
+  estimatedCost         Float           @default(0)
+  expectedOutcome       String
+  reviewDate            DateTime?
+  approvalStatus        String          @default("PROPOSED") // PROPOSED, APPROVED, REJECTED, UNDER_REVIEW, IMPLEMENTED
+  isSynthetic           Boolean         @default(true)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  company               Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  meeting               Meeting?        @relation(fields: [meetingId], references: [id])
+  department            Department?     @relation(fields: [departmentId], references: [id])
+  responsibleUser       User?           @relation(fields: [responsibleUserId], references: [id])
+  budgets               Budget[]
+  calendarEvents        CalendarEvent[]
+  scenarios             StrategicScenario[]
+}
+
+model StrategicScenario {
+  id                 String             @id @default(cuid())
+  companyId          String
+  decisionId         String?
+  title              String
+  horizonYears       Int                @default(5)
+  questionContext    String
+  baseParametersJson String
+  optimisticJson     String
+  baselineJson       String
+  adverseJson        String
+  methodologyNotes   String
+  createdAt          DateTime           @default(now())
+
+  company            Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  decision           StrategicDecision? @relation(fields: [decisionId], references: [id])
+}
+
+model WebhookEvent {
+  id                 String   @id @default(cuid())
+  companyId          String?
+  provider           String
+  eventType          String
+  transmissionId     String   @default("")
+  verified           Boolean  @default(false)
+  verificationDetail String   @default("")
+  payloadJson        String
+  reconciledOrderId  String?
+  status             String   @default("RECEIVED")
+  createdAt          DateTime @default(now())
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  companyId    String
+  actorUserId  String?
+  actorName    String
+  actorRole    String
+  action       String
+  entityType   String
+  entityId     String
+  detailsJson  String   @default("{}")
+  authorized   Boolean  @default(true)
+  denialReason String?
+  createdAt    DateTime @default(now())
+
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+

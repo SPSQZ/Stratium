@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+:root {
+  --bg-main: #F7F8FA;
+  --bg-card: #FFFFFF;
+  --text-primary: #202938;
+  --text-secondary: #667085;
+  --border-subtle: #E5E7EB;
+  --accent-primary: #315B7D;
+  --accent-info: #3B82F6;
+  --accent-success: #16A34A;
+  --accent-warning: #D69E36;
+  --accent-error: #DC5252;
+}
+
+@theme inline {
+  --color-background: var(--bg-main);
+  --color-foreground: var(--text-primary);
+  --font-sans: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html,
+body {
+  background-color: #F7F8FA;
+  color: #202938;
+  font-family: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
