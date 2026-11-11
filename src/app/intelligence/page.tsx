@@ -14,6 +14,7 @@ import {
 interface IntelligencePayload {
   company: {
     id: string;
+    slug?: string;
     name: string;
     industry: string;
     businessModel: string;
@@ -25,6 +26,7 @@ interface IntelligencePayload {
     customerSegments: string;
     competitorsSummary: string;
     historicalCutoffDate: string | null;
+    isHistoricalDemo?: boolean;
   };
   departments: Array<{ id: string; name: string; code: string }>;
   sections: Array<{
@@ -581,14 +583,33 @@ export default function IntelligencePage() {
                 setErrorMessage(null);
                 setStatusMessage(null);
                 try {
-                  const csvContent =
-                    "CorridorSite,EstCapexUSD,UtilityLeadWeeks,Notes\n" +
-                    "Barstow CA,168000,18,I-15 LA-Las Vegas midpoint\n" +
-                    "Gilroy CA,162000,14,US-101 Bay Area gateway\n" +
-                    "Tejon Ranch CA,174000,20,I-5 Grapevine grade station\n";
+                  const isTesla = data.company.isHistoricalDemo;
+                  const isMeridian =
+                    data.company.slug?.includes("meridian") ?? false;
+                  const csvContent = isTesla
+                    ? "CorridorSite,EstCapexUSD,UtilityLeadWeeks,Notes\n" +
+                      "Barstow CA,168000,18,I-15 LA-Las Vegas midpoint\n" +
+                      "Gilroy CA,162000,14,US-101 Bay Area gateway\n" +
+                      "Tejon Ranch CA,174000,20,I-5 Grapevine grade station\n"
+                    : isMeridian
+                    ? "DepotRegion,HubsPlanned,UnitCapexUSD,AnnualSaaSRevUSD,PrepaymentPct\n" +
+                      "Chicago Midwest,12,95000,52000,40\n" +
+                      "London UK,10,98000,54000,40\n" +
+                      "Bengaluru Logistics,15,88000,46000,35\n"
+                    : "InitiativeRegion,PlannedUnits,EstUnitCapexUSD,AnnualRevPerUnitUSD,Notes\n" +
+                      `Primary Market (${data.company.industry}),10,85000,42000,Phase 1 core rollout\n` +
+                      "Regional Expansion,15,90000,39000,Phased milestone-gated tranche\n" +
+                      "Automation Upgrade,5,65000,32000,Efficiency and throughput improvement\n";
+                  const fileName = isTesla
+                    ? "Sample_Corridor_Schedule.csv"
+                    : isMeridian
+                    ? "Meridian_Depot_Rollout_Sample.csv"
+                    : `${data.company.name
+                        .replace(/[^a-zA-Z0-9]+/g, "_")
+                        .replace(/^_|_$/g, "")}_Operations_Baseline.csv`;
                   const blob = new Blob([csvContent], { type: "text/csv" });
                   const fd = new FormData();
-                  fd.append("file", blob, "Sample_Corridor_Schedule.csv");
+                  fd.append("file", blob, fileName);
                   fd.append("category", "OPERATIONS");
                   fd.append("sourceLabel", "Sample Demo Dataset");
                   fd.append("verificationStatus", "SYNTHETIC_RECORD");

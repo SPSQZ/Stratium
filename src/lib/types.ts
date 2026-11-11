@@ -105,6 +105,7 @@ export interface StructuredBoardroomResponse {
     title: string;
     horizonYears: number;
     targetUnits: number;
+    unitLabel?: string;
     unitCapex: number;
     annualOpexPerUnit: number;
     annualRevenuePerUnit: number;

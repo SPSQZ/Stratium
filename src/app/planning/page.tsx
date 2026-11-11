@@ -32,13 +32,16 @@ function StrategicPlanningContent() {
   const [running, setRunning] = useState(false);
 
   const [form, setForm] = useState(() => ({
-    title: searchParams.get("title") || "10-Year Regional Infrastructure Expansion",
-    horizonYears: Number(searchParams.get("horizonYears")) || 10,
-    targetUnits: Number(searchParams.get("targetUnits")) || 250,
-    unitLabel: "Supercharger Stations (6 Stalls)",
-    unitCapex: Number(searchParams.get("unitCapex")) || 165000,
-    annualOpexPerUnit: Number(searchParams.get("annualOpexPerUnit")) || 18500,
-    annualRevenuePerUnit: 0,
+    title:
+      searchParams.get("title") || "Multi-Year Strategic Expansion Model",
+    horizonYears: Number(searchParams.get("horizonYears")) || 5,
+    targetUnits: Number(searchParams.get("targetUnits")) || 25,
+    unitLabel:
+      searchParams.get("unitLabel") || "Expansion Units / Initiatives",
+    unitCapex: Number(searchParams.get("unitCapex")) || 85000,
+    annualOpexPerUnit: Number(searchParams.get("annualOpexPerUnit")) || 12000,
+    annualRevenuePerUnit:
+      Number(searchParams.get("annualRevenuePerUnit")) || 40000,
     workforcePerTenUnits: 1.5,
     capexLeadMonths: 4,
     questionContext:
@@ -64,8 +67,43 @@ function StrategicPlanningContent() {
       if (res.ok && active) {
         const json = (await res.json()) as PlanningResponse;
         setData(json);
-        if (json.scenarios.length > 0) {
-          setActiveResult((prev) => prev ?? json.scenarios[0].computed);
+        setActiveResult(json.scenarios[0]?.computed ?? null);
+        if (!searchParams.get("title")) {
+          const n = json.company.name.toLowerCase();
+          if (n.includes("tesla")) {
+            setForm((p) => ({
+              ...p,
+              title: "10-Year US & Regional Supercharger Network Rollout",
+              horizonYears: 10,
+              targetUnits: 250,
+              unitLabel: "Supercharger Stations (6 Stalls)",
+              unitCapex: 165000,
+              annualOpexPerUnit: 18500,
+              annualRevenuePerUnit: 0,
+            }));
+          } else if (n.includes("meridian")) {
+            setForm((p) => ({
+              ...p,
+              title: "5-Year Commercial Fleet Hub Rollout",
+              horizonYears: 5,
+              targetUnits: 45,
+              unitLabel: "Regional Fleet Charging Hubs",
+              unitCapex: 95000,
+              annualOpexPerUnit: 14000,
+              annualRevenuePerUnit: 52000,
+            }));
+          } else {
+            setForm((p) => ({
+              ...p,
+              title: `${json.company.name} 5-Year Expansion Model`,
+              horizonYears: 5,
+              targetUnits: 25,
+              unitLabel: "Expansion Units / Initiatives",
+              unitCapex: 85000,
+              annualOpexPerUnit: 12000,
+              annualRevenuePerUnit: 40000,
+            }));
+          }
         }
       }
     }
@@ -73,7 +111,7 @@ function StrategicPlanningContent() {
     return () => {
       active = false;
     };
-  }, [revision]);
+  }, [revision, searchParams]);
 
   async function runScenario(save: boolean) {
     setRunning(true);

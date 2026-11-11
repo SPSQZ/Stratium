@@ -181,7 +181,7 @@ Respond strictly with valid JSON matching this TypeScript interface:
   "risks": string[],
   "uncertaintiesAndMissingData": string[],
   "suggestedNextQuestions": string[],
-  "suggestedScenarioParams": {"title": string, "horizonYears": number, "targetUnits": number, "unitCapex": number, "annualOpexPerUnit": number, "annualRevenuePerUnit": number, "workingCapitalReserve": number} | null,
+  "suggestedScenarioParams": {"title": string, "horizonYears": number, "targetUnits": number, "unitLabel": string, "unitCapex": number, "annualOpexPerUnit": number, "annualRevenuePerUnit": number, "workingCapitalReserve": number} | null,
   "suggestedDecisionDraft": {"title": string, "objective": string, "selectedOption": string, "alternativesConsidered": string, "rationale": string, "assumptions": string, "risks": string, "financialImplications": string, "estimatedCost": number} | null
 }`;
 }
@@ -561,7 +561,10 @@ function detectConflictingSpeakers(
   return speakers;
 }
 
-function extractHorizonAndUnits(prompt: string, isTesla: boolean): {
+function extractHorizonAndUnits(
+  prompt: string,
+  companySlug: string
+): {
   horizonYears: number;
   targetUnits: number;
   unitLabel: string;
@@ -569,12 +572,18 @@ function extractHorizonAndUnits(prompt: string, isTesla: boolean): {
   annualOpexPerUnit: number;
   annualRevenuePerUnit: number;
 } {
+  const isTesla = companySlug.includes("tesla");
+  const isMeridian = companySlug.includes("meridian");
   const yrMatch = prompt.match(/(\d+)\s*-?\s*year/i);
   const horizonYears = yrMatch
     ? Math.max(1, Math.min(15, Number.parseInt(yrMatch[1], 10)))
-    : 10;
+    : isTesla
+    ? 10
+    : 5;
 
-  const unitMatch = prompt.match(/(\d+)\s+(?:new\s+)?(stations|hubs|regions|sites|chargers|cities)/i);
+  const unitMatch = prompt.match(
+    /(\d+)\s+(?:new\s+)?(stations|hubs|regions|sites|chargers|cities|deployments|units|initiatives|factories|stores)/i
+  );
 
   if (isTesla) {
     const isChargingQuestion =
@@ -595,13 +604,24 @@ function extractHorizonAndUnits(prompt: string, isTesla: boolean): {
     };
   }
 
+  if (isMeridian) {
+    return {
+      horizonYears,
+      targetUnits: unitMatch ? Number.parseInt(unitMatch[1], 10) : 45,
+      unitLabel: "Regional Fleet Charging Hubs",
+      unitCapex: 95000,
+      annualOpexPerUnit: 14000,
+      annualRevenuePerUnit: 52000,
+    };
+  }
+
   return {
     horizonYears,
-    targetUnits: unitMatch ? Number.parseInt(unitMatch[1], 10) : 45,
-    unitLabel: "Regional Fleet Charging Hubs",
-    unitCapex: 95000,
-    annualOpexPerUnit: 14000,
-    annualRevenuePerUnit: 52000,
+    targetUnits: unitMatch ? Number.parseInt(unitMatch[1], 10) : 25,
+    unitLabel: "Expansion Units / Initiatives",
+    unitCapex: 85000,
+    annualOpexPerUnit: 12000,
+    annualRevenuePerUnit: 40000,
   };
 }
 
@@ -651,7 +671,7 @@ async function runDeterministicToolOrchestration(
       lower
     );
 
-  const scenarioParams = extractHorizonAndUnits(prompt, isTesla);
+  const scenarioParams = extractHorizonAndUnits(prompt, session.company.slug);
   const scenarioResult = needsScenarioModel
     ? await toolCalculateFinancialScenario(session, scenarioParams)
     : null;
@@ -940,6 +960,7 @@ async function runDeterministicToolOrchestration(
           title: scenarioResult.title,
           horizonYears: scenarioResult.horizonYears,
           targetUnits: scenarioResult.input.targetUnits,
+          unitLabel: scenarioResult.input.unitLabel,
           unitCapex: scenarioResult.input.unitCapex,
           annualOpexPerUnit: scenarioResult.input.annualOpexPerUnit,
           annualRevenuePerUnit: scenarioResult.input.annualRevenuePerUnit,

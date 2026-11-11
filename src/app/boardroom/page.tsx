@@ -69,28 +69,12 @@ interface BoardroomData {
     approvalStatus: string;
     estimatedCost: number;
   }>;
+  suggestedInvestigations: Array<{
+    label: string;
+    isTranscript: boolean;
+    prompt: string;
+  }>;
 }
-
-const DEMO_PROMPTS = [
-  {
-    label: "Scenario 1: CEO vs CFO vs CTO Conflict",
-    isTranscript: true,
-    prompt:
-      "CEO: We should aggressively expand Supercharger stations into 15 new regional corridors immediately.\nCFO: Our Q3 filings showed negative automotive margin and our financial position cannot support un-gated expansion.\nCTO: Our current power electronics engineering bandwidth and utility grid interconnection lead times cannot handle simultaneous rollout.",
-  },
-  {
-    label: "Scenario 2: 10-Year Station Capacity Question",
-    isTranscript: false,
-    prompt:
-      "Unexpected board question: How many charging stations can we realistically deploy over the next 10 years, what are the CapEx/OpEx ranges, and how does that compare to our recorded cash balance?",
-  },
-  {
-    label: "Cutoff Verification (Post-2012 Test)",
-    isTranscript: false,
-    prompt:
-      "What did Tesla's Model 3 launch and Gigafactory Nevada contribute to 2016 revenue?",
-  },
-];
 
 export default function BoardroomPage() {
   const router = useRouter();
@@ -143,9 +127,12 @@ export default function BoardroomPage() {
       if (res.ok && active) {
         const json = (await res.json()) as BoardroomData;
         setBoardData(json);
-        if (json.activeMeeting) {
-          setSelectedMeetingId(json.activeMeeting.id);
-        }
+        setSelectedMeetingId(json.activeMeeting?.id ?? "");
+        setPrompt("");
+        setIsTranscriptPaste(false);
+        setDraftModal(null);
+        setDraftFeedback(null);
+        setSpeakerRoleOverride(null);
       }
     }
     void init();
@@ -305,10 +292,10 @@ export default function BoardroomPage() {
           {/* Quick Investigation Prompts */}
           <div className="rounded-md border border-[#E5E7EB] bg-[#FFFFFF] p-3">
             <div className="text-[11px] font-medium uppercase tracking-wide text-[#667085] mb-2">
-              Suggested Boardroom Investigations
+              Suggested Boardroom Investigations · {boardData.company.name}
             </div>
             <div className="flex flex-wrap gap-2">
-              {DEMO_PROMPTS.map((dp) => (
+              {(boardData.suggestedInvestigations ?? []).map((dp) => (
                 <button
                   key={dp.label}
                   type="button"
@@ -576,8 +563,12 @@ export default function BoardroomPage() {
                               title: p.title,
                               horizonYears: String(p.horizonYears),
                               targetUnits: String(p.targetUnits),
+                              ...(p.unitLabel ? { unitLabel: p.unitLabel } : {}),
                               unitCapex: String(p.unitCapex),
                               annualOpexPerUnit: String(p.annualOpexPerUnit),
+                              annualRevenuePerUnit: String(
+                                p.annualRevenuePerUnit ?? 0
+                              ),
                             });
                             router.push(`/planning?${qs.toString()}`);
                           }}
